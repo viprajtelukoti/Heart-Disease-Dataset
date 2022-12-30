@@ -1,0 +1,264 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+                                          Heart Disease Dataset
+                                First Project Report, MATH 8050, Fall 2022
+                                      Sai Vipraj Telukoti, C17202671
+                                      Vamshi Krishna Mummadi, C27032539
+                                      Yaswanth Mulakalla, C16676264
+
+why you choose this dataset? what type of scientific problems this data can address?
+The dataset is a heart disease dataset from Kaggle. Each row represents the different health data of a person.
+
+How and what are you doing with the dataset? 
+
+
+Why the problem you are addressing is interesting in a broader sense?
+
+
+
+The dataset has 14 columns. So, it is too big to take a screenshot of and show it here. Here is the name of the columns and the explanation of each variable as described in Kaggle.
+
+1. age: The age of a person
+
+2. sex: The person’s gender(1 = male, 0 = female)
+
+3. cp: The types of chest pain experienced (Value 1: typical angina, Value 2: atypical angina, Value 3: non-anginal pain, Value 4: asymptomatic)
+
+4. trestbps: Resting blood pressure (mm Hg on admission to the hospital)
+
+5. chol: Cholesterol measurement in mg/dl
+
+6. fbs: Fasting blood sugar (if > 120 mg/dl, 1 = true; 0 = false)
+
+7. restecg: Resting electrocardiographic measurement (0 = normal, 1 = having ST-T wave abnormality, 2 = showing probable or definite left ventricular hypertrophy by Estes’ criteria)
+
+8. thalach: Maximum heart rate achieved
+
+9. exang: Exercise induced angina (1 = yes; 0 = no)
+
+10.oldpeak: ST depression induced by exercise relative to rest (‘ST’ relates to positions on the ECG plot)
+
+11.slope: the slope of the peak exercise ST segment (Value 1: upsloping, Value 2: flat, Value 3: downsloping)
+
+12.ca: The number of major vessels (0–3)
+
+13.thal: A blood disorder called thalassemia (1 = normal; 2 = fixed defect; 3 = reversable defect)
+
+14.target: Heart disease (0 = no, 1 = yes)
+
+
+There are now 11 variables. The link between a discrete and a categorical variable and the variable that is the "target.
+
+The categorical variables, however, are designated as 0, 1, 2, and 3. According to the preceding description, 
+
+The codes for converting categorical variables to their corresponding strings are as follows:
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading the dataset
+
+```{r}
+heart = read.csv("Heart.csv")
+```
+
+
+```{r}
+heart = subset(heart, select=c(-restecg, -chol,-fbs))
+```
+
+Cleaning the dataset
+
+```{r}
+heart$sex[heart$sex == 0] = "female"
+heart$sex[heart$sex == 1] = "male"
+heart$cp[heart$cp == 0] = "typical angina"
+heart$cp[heart$cp == 1] = "atypical angina"
+heart$cp[heart$cp == 2] = "non-anginal pain"
+heart$cp[heart$cp == 3] = "asymptomatic"
+heart$exang[heart$exang == 0] = "no"
+heart$exang[heart$exang == 1] = "yes"
+heart$slope[heart$slope == 0] = "upsloping"
+heart$slope[heart$slope == 1] = "flat"
+heart$slope[heart$slope == 2] = "downsloping"
+heart$thal[heart$thal == 1] = "normal"
+heart$thal[heart$thal == 2] = "fixed defect"
+heart$thal[heart$thal == 3] = "reversible defect"
+heart$target1 = heart$target
+heart$target1[heart$target1 == 0] = "no heart disease"
+heart$target1[heart$target1 == 1] = "heart disease"
+```
+
+
+Exploratory Analysis
+
+Since heart illness will be our primary focus, it makes sense to start by comparing the proportion of people in the dataset who have heart disease and those who do not.
+
+It's not far away. In this dataset, 51% of participants have cardiac disease, compared to 49% of healthy individuals.
+
+The notion that older persons are more susceptible to developing heart disease is widespread. The dataset's population's age distribution is shown in the table below.
+
+```{r}
+round(prop.table(table(heart$target1)),2)
+```
+
+Age of the Population
+
+This is a common idea that older people are more prone to get heart disease. Here is the distribution of the age of the population in the dataset.
+
+```{r}
+library(ggplot2)
+ggplot(heart, aes(x=age)) +
+  geom_histogram() + ggtitle("Distribution of age of the population")+
+  xlab("Age") + ylab("Density")
+
+
+```
+
+
+The distribution is almost normal and somewhat biased to the right. The majority of the population is between the ages of 50 and 65. Very few people are under the age of thirty, and even fewer are over the age of seventy.
+
+Looking at the age group as a whole rather than at each individual age may be more insightful in terms of the prevalence of cardiac disease. The "age" variable was separated into various age groups for this reason, and an additional column was created with the name "age grp."
+
+```{r}
+heart$age_grp = cut(heart$age, breaks = seq(25, 77, 4))
+
+```
+
+Gender or Sex
+
+Knowing the ratio of males to females in the dataset is crucial before examining the link between heart disease and gender.
+
+```{r}
+round(prop.table(table(heart$sex)),2)
+```
+
+The proportion of male and female are not similar. There are 30% female and 70% male population in the dataset. The proportion of males and females with heart disease could be the next important findings.
+
+```{r}
+round(prop.table(table(heart$sex, heart$target1)), 2)
+```
+
+The ratio of male to female is not the same. In the dataset, there are 70% males and 30% females. The following significant findings could be the ratio of males to females who have cardiac disease.
+
+Women make up a far larger proportion of the population with cardiac disease than without it. In contrast, just 29% of males have heart disease, whereas 40% of the male population is heart disease-free.
+
+The Slope of the Peak Exercise ST Segment(Slope)
+
+To comprehend it, a bar plot of various heart disease situations and slope types will be useful.
+
+```{r}
+ggplot(heart, aes(x= slope, fill=target1)) + 
+  geom_bar(position = 'dodge') +
+  xlab("Type of Slope") +
+  ylab("Count") +
+  ggtitle("Analysis of types of slope") +
+  scale_fill_discrete(name = "Heart disease", labels = c("No", "Yes"))
+```
+
+Clearly, the rate of heart disease appears varied with various types of slope. With a downward slope, there are much more people without heart disease (around 340) than there are people who have the condition (about 125). On a flat surface, however, it is almost the exact reverse. About 325 people have heart disease, while 160 people are heart disease-free. There aren't many distinctions in upsloping, although there are more cases of heart disease than ones without it.
+
+Does the pattern apply to both men and women?
+
+Another good one to address. That can be better understood by using the same kind of bar plot for the dataset's male and female portions. The dataset was first divided into the population of men and women:
+
+```{r}
+male_data = heart[heart$sex=="male",]
+female_data = heart[heart$sex=="female",]
+ggplot(male_data, aes(x= slope, fill=target1)) + 
+  geom_bar(position = 'dodge') +
+  xlab("Type of Slope") +
+  ylab("Count") +
+  ggtitle("Analysis of types of slope for males") +
+  scale_fill_discrete(name = "Heart disease", labels = c("No", "Yes"))
+```
+```{r}
+ggplot(female_data, aes(x= slope, fill=target1)) + 
+  geom_bar(position = 'dodge') +
+  xlab("Type of Slope") +
+  ylab("Count") +
+  ggtitle("Analysis of types of slope for females") +
+  scale_fill_discrete(name = "Heart disease", labels = c("No", "Yes"))
+```
+
+The male population plot exhibits the same pattern as the general bar plot used for slope analysis. However, the pattern is substantially different among women. The number of people without heart disease is significantly higher (180) than the number of people with heart disease (25). Again, on the flat slope, both cases are close, although there are somewhat more people without heart disease.
+
+The Number of Major Vessels (ca)
+
+According to the dataset, a person's main vessels may number 0, 1, 2, 3, or 4. The number of vessels and heart disease have a strong link, according to the correlation plot. Here is an illustration showing how different main vessel counts correlate with heart disease:
+
+```{r}
+mosaicplot(table(heart$target1, heart$ca), col=c("#754869", "coral", "skyblue", "#423f42", "#ed18c6"), las=1, main="Heart Disease for Major Vessels")
+
+```
+
+A major vessel is absent in almost two thirds of those who have heart disease. Few people possess all four main vessels. It is difficult to predict the effects of that.
+
+The number of major vessels or the degree to which major vessels are correlated with heart disease may differ between male and female populations. Here is a graph showing the relationship between male main arteries and heart disease:
+
+
+```{r}
+mosaicplot(table(male_data$target1, male_data$ca), col=c("#754869", "coral", "skyblue", "#423f42", "#ed18c6"), las=1, main="Major Vessels in Males")
+
+```
+
+It appears that the trend for major vessels in the male population is pretty comparable to that in the general population. Here is a graph demonstrating the association between heart disease and the number of main vessels in the female population:
+
+```{r}
+mosaicplot(table(female_data$target1, female_data$ca), col=c("#754869", "coral", "skyblue", "#423f42", "#ed18c6"), las=1, main="Major Vessels in Females")
+
+```
+
+The number of main vessels in the female population is 0, 1, 2, or 3. There are 4 significant vessels in no female. The majority of females with heart disease do not have major vessels, just like the male population. Again, the majority of females had 0 or 2 major veins in the area with no cardiac disease.
+
+ST Depression Induced by Exercise Relative to Rest(oldpeak)
+
+These boxplots depict the distribution of ST depression in patients with and without cardiac disease.
+
+```{r}
+ggplot(heart, aes(x = target1, y = oldpeak)) + ylab("ST Depression") + xlab("Haert Disease State")+ ggtitle("ST Depression Induced by Exercise vs Haert Disease")+
+        geom_boxplot()
+```
+The interquartile range is greater (by about 2) on the side with no heart disease than on the side with heart disease (1).
+
+Does the severity of this sort of depression vary with age, and do they all together have different effects on heart health?
+
+There may be some information on that from a mixed scatter plot.
+
+
+```{r}
+ggplot(heart, aes(x = age, y = oldpeak,color=target1, size = factor(oldpeak))) + 
+    geom_point(alpha=0.3) + labs(color = "Heart Disease State")+guides(size=FALSE) + xlab("Age") + ylab("ST Depression") + ggtitle("Age vs Resting Blood Pressure Separated by Heart Condition")
+```
+This dataset is unique, as was stated in the outset. It demonstrates that heart disease declines as people age. It appears that heart disease cases decrease when ST depression increases. As resting blood sugar levels change, so do the size of the dots. However, it is difficult to infer any connection between age and ST Depression from this image.
+
+```{r}
+ggplot(heart, aes(x = target1, y = trestbps)) +
+        geom_boxplot() + xlab("Heart Disease State") + ylab("Resting Blood Pressure") + ggtitle("Boxplots of Resting Blood Pressure by Heart Condition")
+
+```
+The accompanying plot demonstrates that the no heart disease plot's interquartile range of resting blood sugar is somewhat higher. The medians of both box plots, however, appear to be the same. The following graph shows a scatter plot of age versus resting blood pressure along with state-specific heart disease colors and depression-related dot size. This one ought to provide additional details.
+
+
+```{r}
+ggplot(data=heart,aes(x=age,y=trestbps,color=target1,size=factor(oldpeak)))+
+geom_point(alpha=0.3)+
+  xlab("Age")+
+  ylab("Resting blood sugar") + 
+  labs(color="Heart Disease State") + 
+  guides(size=FALSE)+
+  ggtitle("Age vs Resting Blood Pressure Separated by Heart Condition")
+```
+
+This story reveals some really intriguing things. Heart disease instances are more common than cases of no heart disease when the resting blood sugar is really low, like 100 or below. No heart disease cases are higher than heart disease cases when the resting blood pressure is over 165.
+
+As we previously discovered, blue makes up the majority of large dots. More persons with ST depression therefore do not have cardiac problems. Additionally, there are more larger dots in the higher age range. Thus, elderly individuals have higher rates of ST Depression.
+
+Conclusion:
+
+We made an effort to demonstrate some strategies and graphics for summarizing datasets. It is not a very large dataset. There are just 14 columns. However, there are still many other possibilities to investigate. 

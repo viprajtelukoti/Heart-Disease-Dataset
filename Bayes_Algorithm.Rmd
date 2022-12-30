@@ -1,0 +1,64 @@
+---
+title: "Bayes Algorithm"
+date: "2022-12-11"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(gridExtra)
+library(magrittr)
+library(dplyr)
+library(caret)
+library(leaps)
+library(glmnet)
+#install.packages("plotmo")
+library(plotmo) 
+```
+
+
+
+```{r}
+# Import Dataset
+heart <- read.csv("heart.csv", header = TRUE)
+df <- na.omit(heart)
+head(heart, 10)
+```
+```{r}
+set.seed(100) 
+#100 is used to control the sampling permutation to 100. 
+index<-sample(nrow(heart),0.75*nrow(heart))
+train<-heart[index,]
+test<-heart[-index,]
+```
+
+
+```{r}
+train$pred<-NULL
+train$pred1<-NULL
+test$pred<-NULL
+test$pred1<-NULL
+```
+
+```{r}
+library(e1071)
+model_nb <- naiveBayes(target~.,data = train)
+```
+
+
+```{r}
+train$pred<-predict(model_nb,train)
+confusionMatrix(train$pred,as.factor(train$target))
+```
+```{r}
+test$pred<-predict(model_nb,test)
+confusionMatrix(test$pred,as.factor(test$target))
+```
+
+

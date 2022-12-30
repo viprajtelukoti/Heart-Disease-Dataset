@@ -1,0 +1,62 @@
+---
+title: "Bayesian_Vipraj"
+author: "Sai Vipraj Telukoti"
+date: "2022-12-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(data.table)
+#library(kableExtra)
+library(ggplot2)
+library(dplyr)
+library(tidybayes)
+library(GGally)  
+library(INLA)     #This is not on CRAN yet. You will need to install from the software site
+library(patchwork)
+library(MASS)
+```
+
+```{r}
+heart_data <- read.csv("heart.csv")
+```
+
+```{r}
+#heart_data <- data.table(heart_data)
+#heart_data[, id:=1:nrow(heart_data)]
+#====================================
+#=====Creating different models======================
+formula1 <- num~1
+formula2 = num~age+sex+chol+thalach + trestbps+fbs+restecg+
+         exang+oldpeak+slope+ca
+formula3 = num~age+sex+chol+thalach + trestbps+fbs+restecg+   # full model with random effects
+         exang+oldpeak+slope+ca+ f(id, model="iid")
+formula4= num~sex+chol+thalach + trestbps+fbs+                # full model minus age and restingecg excluded
+         exang+oldpeak+slope+ca
+formula5= num~sex+chol+thalach + fbs+
+         exang+oldpeak+slope+ca                               # age and restingecg and resting bp excluded
+```
+
+```{r}
+generate_bayesian_estimates <-  function(formula) {
+           model= inla(formula,
+                       data=heart_data,
+                       family = "binomial", Ntrials = 1,
+                       control.compute = list(dic= TRUE, cpo=TRUE),
+                       num.threads = 2)
+          return(summary(model))
+           
+         }
+```
+
+```{r}
+model1 <-generate_bayesian_estimates(formula1)
+ model2 <-generate_bayesian_estimates(formula2)
+ model3 <-generate_bayesian_estimates(formula3)
+ model4 <-generate_bayesian_estimates(formula4)
+ model5 <-generate_bayesian_estimates(formula5)
+```
+

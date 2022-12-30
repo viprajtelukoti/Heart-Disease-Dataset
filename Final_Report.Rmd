@@ -1,0 +1,138 @@
+---
+title: "Final_Report"
+date: "2022-12-04"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+install_tinytex()
+
+```{r echo=TRUE, warning=FALSE,message=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(magrittr)
+library(dplyr)
+library(caret)
+library(leaps)
+library(glmnet)
+#install.packages("plotmo")
+library(plotmo) 
+```
+
+
+
+
+```{r}
+# Import Dataset
+data <- read.csv("heart.csv", header = TRUE)
+df <- na.omit(data)
+head(df, 10)
+```
+
+```{r}
+df$sex <- as.factor(df$sex)
+df$cp <- as.factor(df$cp)
+df$fbs <- as.factor(df$fbs)
+df$restecg <- as.factor(df$restecg)
+df$exang <- as.factor(df$exang)
+df$slope <- as.factor(df$slope)
+df$ca <- as.factor(df$ca)
+df$thal <- as.factor(df$thal)
+df$target <- as.factor(df$target)
+
+```
+
+```{r}
+summary(df)
+
+```
+
+```{r}
+# Relation between age and target
+ggplot(df, aes(y = age, x = target, col = target)) +
+geom_boxplot() + 
+theme_minimal()
+```
+
+```{r}
+# Relation between sex, age and the target
+ggplot(df, aes(x = target, y = age, fill = sex, col = sex)) +
+geom_jitter() +
+theme_minimal()
+```
+
+
+
+Ridge estimator
+```{r}
+# Data pre-processing
+x <- model.matrix(target~., df)[,-1]
+
+y <- df$target
+```
+
+```{r}
+# Fit ridge classifier
+fit_ridge <- glmnet(x, y, family = "binomial", nfolds = 5, alpha = 0, standardize = TRUE)
+plot_glmnet(fit_ridge, xvar = "rlambda", label = 10)
+```
+
+```{r}
+lam <- cv.glmnet(x, y, family = "binomial", nfolds = 5, alpha = 0, standardize = TRUE)
+plot(lam)
+```
+```{r}
+l.min <- lam$lambda.min %>% print()
+
+```
+
+
+LASSO
+
+```{r}
+# Fit lasso classifier
+fit_lasso <- glmnet(x, y, family = "binomial", nfolds = 5, alpha = 1, standardize = TRUE)
+plot_glmnet(fit_lasso)
+```
+```{r}
+# Find best lambda 
+lam_lasso <- cv.glmnet(x, y, family = "binomial", nfolds = 5, alpha = 1, standardize = TRUE)
+plot(lam_lasso)
+```
+
+```{r}
+print(lam_lasso$lambda.min)
+```
+
+Elastic-net
+
+```{r}
+#library(caret)
+set.seed(123)
+lambda <- seq(-50, 50)
+alpha <- seq(-10, 10, length = 20)
+searchGrid = expand.grid(.alpha = alpha, .lambda = lambda)
+
+# Set training control
+tc <- trainControl(method = "repeatedcv",
+                              number = 5,
+                              repeats = 3)
+
+# Train the model
+en.model <- train(target ~ .,
+                  data = df,
+                  method = "glmnet",
+                  tuneGrid = searchGrid,
+                  metric = "Accuracy",
+                  trControl = tc)
+```
+
+```{r}
+plot(en.model)
+```
+
+

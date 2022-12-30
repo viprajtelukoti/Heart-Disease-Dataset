@@ -1,0 +1,589 @@
+---
+title: "Project CheckPoint 2"
+author: "Sai Vipraj Telukoti"
+date: "2022-11-19"
+output:
+  html_document:
+    df_print: paged
+---
+
+# %% [code]
+---
+title: '**Know Your Risk for Heart Disease**'
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 8
+    fig_height: 5
+    theme: cosmo
+    highlight: tango
+    code_folding: hide
+---
+
+
+```{r echo=TRUE, warning=FALSE,message=FALSE}
+# Load Libraries 
+library(tidyverse)
+library(gridExtra)
+library(magrittr)
+library(dplyr)
+library(caret)
+
+```
+
+# **Introduction**
+
+About **630,000 Americans** die from heart disease each year — that is **1 in every 4 deaths** 
+
+![](https://s3.amazonaws.com/assets.inarkansas.com/70160/faces-of-heart-disease-723.png)
+
+
+Heart Disease is a major health threat, that is why it is important to know risk factors so that proactive measures can be taken before it's too late. Several health conditions such as lifestyle, age and family history can increase risk for heart disease. This report aims to highlight factors that contribute to heart disease by analyzing a dataset obtained from Kaggle. This dataset dates from 1988 and consists of four databases: Cleveland, Hungary, Switzerland, and Long Beach V. It contains 14 attributes and 1025 observations. While working with this dataset it was found that, it did not record the data in the most efficient way. It was discovered that the ‘target’ variable in the data was swapped. This variable provides indication as to whether the heart disease is present or not. This inconsistency in the data could be attributed to human error.  In order to carry out further analysis, this variable was flipped back to reflect the correct proportions. 
+
+For analysis, a subset of 5 predictor variables were included as follows: 
+
+* `age`: Patient's age, represented in years 
+
+* `sex`: Patient's sex, represented as either male or female
+
+* `cp`: Patient's chest pain type, ranging from 0 to 3; where 0 = no pain and 3 = maximum pain level
+
+* `trestbps`: Patient's resting blood pressure upon admission to the hospital, in mm Hg 
+
+* `chol`: Serum cholesterol, measured in mg/dl
+
+* `target`: This is the target variable, which refers to the presence of heart disease in the patient (0 = no heart disease present or 1 = heart disease present) 
+
+**Goal**: the purpose of this project is to analyze the factors that contribute to heart disease in adults.
+
+**Modeling**: Since the target variable "Target" is binary, logistic regression will be used to model four factors: age, sex, chest pain, resting blood pressure and cholesterol levels. 
+
+
+
+# **Single Variable Inspect and Transform**  
+
+### Basic dataframe checks 
+
+
+
+
+```{r echo=TRUE}
+# Import Dataset
+heartdata <- read.csv("heart.csv", header = TRUE)
+```
+
+
+```{r echo=TRUE}
+# Check Dataset Dimensions
+nrow(heartdata)
+ncol(heartdata)
+```
+
+The dataset contains 1025 rows, and 14 columns. 
+
+
+```{r echo=TRUE}
+# Number of Variables
+heartdata_head <- heartdata %>% head
+heartdata_head
+```
+
+There are 14 variables in the dataset  
+
+```{r echo=TRUE}
+# Summary 
+heartdata %>% summary
+```
+
+
+```{r echo=TRUE}
+# Select Variables
+df <- heartdata %>% select(age, sex, cp, trestbps, chol, target)
+```
+
+```{r echo=TRUE}
+# filter by NA
+heartdata %>% filter(is.na(age))
+```
+
+There are no missing values or n/a in the dataset. 
+
+```{r echo=TRUE}
+# view structure of selected data with variable types
+df %>% str
+```
+
+The new dataset contains 1025 rows (representing different patients) and 6 columns (representing different variable types)
+
+### Individual variable inspection
+
+Detailed inspection of each variable is presented below:
+
+##### 1. age 
+
+- Age is a continous numerical variable and is represented in years
+
+```{r echo=TRUE}
+# Histogrram of Age
+g1 <- df %>% ggplot(aes(x=age)) + geom_histogram(bins=50) # Age
+g1
+```
+
+Looking at the histogram of age it is apprent that it's a bimodal distribution (since it's got two peaks). This means that there are two modes and it points to the fact that there may be two types of age groups within the data.    
+
+##### 2. sex = this variable is recorded in the data as an integer, 1 = male and 0 = female)
+
+- This is a categorical variable and will be used to spot and explore sex differences in blood pressure. 
+
+```{r echo=TRUE}
+df$sex %>% table
+
+```
+
+Dataset contains 713 males and 312 females. So it is noted that the dataset contains about twice as many males than females. 
+
+##### 3. cp = chest pain type 
+
+- This is a discrete (ordinal) variable.
+
+```{r echo=TRUE}
+df$cp %>% table
+```
+
+So, 77 out of 1025 people reported the highest level of chest pain although the majority of the people, 497, reported absence of chest pain.
+
+##### 4. trestbps = resting blood pressure (in mm Hg upon admission to the hospital)
+
+- This is a continous variable. 
+
+```{r echo=TRUE}
+g2 <- df %>% ggplot(aes(x=trestbps)) + geom_histogram(bins=50) # trestbps
+```
+
+```{r echo=TRUE}
+df <- df %>% mutate(log1_trestbps = log1p(trestbps)) %>% select(-trestbps)
+
+```
+
+```{r echo=TRUE}
+df %>% summary
+```
+
+```{r echo=TRUE}
+g3 <- df %>% ggplot(aes(x=log1_trestbps)) + geom_histogram(bins=50) # log1_trestbps
+```
+
+```{r fig.width=10, fig.height=6,echo=TRUE}
+grid.arrange(g2, g3, nrow=1)
+```
+
+
+The histogram of tresbps shows that the data is mildly right skewed. Hence, log transformationwas excuted using `mutate` function/argument to create a new column. The summary above shows that log transformation was successful and a new column, log1_tresbps, was created. The figure above shows the comparison of histogram of tresbps and log1_tresbps. After the log transformation the variable looks normally distributed. 
+
+##### 5. chol = cholserum = serum cholesterol in mg/dl
+
+- This variable is a continous variable. 
+
+```{r echo=TRUE}
+g4 <- df %>% ggplot(aes(x=chol)) + geom_histogram(bins=50) # chol
+```
+
+```{r echo=TRUE}
+df <- df %>% mutate(log1_chol = log1p(chol)) %>% select(-chol)
+```
+
+```{r echo=TRUE}
+df %>% summary
+```
+
+```{r echo=TRUE}
+g5 <- df %>% ggplot(aes(x=log1_chol)) + geom_histogram(bins=50) # log1_chol
+```
+
+```{r fig.width=10, fig.height=6,echo=TRUE}
+grid.arrange(g4, g5, nrow=1)
+```
+
+The histogram of chol shows that the data is right skewed. Therefore, log transformation was excuted once again using `mutate` function/argument to create a new column. The summary above shows that log transformation was successful and a new column, log1_chol, was created. The figure above shows the comparison of histogram of chol and log1_chol. After the log transformation the variable looks normally distributed. 
+
+##### 6. target = pesence of heart disease, 1 = disease or 0 = no disease
+
+- This is a categorical variable and will be incorporated in the project as it provides indication as to whether the heart disease is present or not.
+
+```{r echo=TRUE}
+df$target %>% table
+```
+
+The above table shows the number of people that reported having heart disease. As obvious, 499 out of 1025 patients reported having a heart disease.    
+
+
+# **Multivariable inspection and Transformation**
+
+Since the variable "Target" is the target of this project, it will be assessed with each of the predictor variable. In other words, since there are 5 predictor variables, 5 target-predictor relationships will be assessed. Multicolineararity between 3 continous variables (age, cholesterol and blood pressure) will also be checked. 
+
+### 1. Target vs Age
+
+Since the initial inspection of age reveled that it is a bimodal distribution. Hence, density plot will help to inspect the relationship between target and age.
+
+```{r echo=TRUE}
+
+df %>% ggplot(aes(x=age, fill=factor(target))) +
+  geom_density(alpha=0.5) +
+  geom_vline(xintercept=c(54, 70), color='red', linetype=2)
+```
+
+
+X-intercept has been placed in the above density plot above to reveal the groupings within the plot. It appears that from the ages of just about 28 to 54 there are greater number of people that do not have heart disease. This is revealed by the more density in the red curve compared to the blue However, from 54 years of age to about 70 years there are greater number of people who have heart disease. This can be seen by greater density in the blue curve compared to red. Moreover, after 70 years there are greater number of people without heart heart disease, as shown by slightly greater density in the red curve
+
+This suggests that there should be three age groups: <54 years, 54 - 70 years and >70 years
+
+
+```{r echo=TRUE}
+
+df <- df %>% mutate(
+  AgeCategories = case_when(
+    age < 54 ~ 'Adults',
+    age >= 54 & age < 70 ~ 'Older Adults',
+    age >= 70 ~ 'Elderly',
+  )
+)
+df$AgeCategories %>% table(useNA='always')
+```
+
+
+### 2. Target vs Sex
+
+Since both the variables are categorical, their relationship can be visualized with side-by-side barplot.  
+
+```{r echo=TRUE}
+df %>% mutate(
+  sex = ifelse(sex==1, "Male", "Female")
+)%>%ggplot(aes(x=sex, fill=factor(target))) +
+     geom_bar(position='dodge')
+```
+
+It is apparent that more males have presence of heart disease compared to females. This is evident by the height of the bars. However, recall that the dataset contains 713 males and only 312 females. So, this could be attributed to the fact that there are more males in the dataset to begin with. However, from the side-by-side barplot it seems that men are more likely to get heart disease, This variable will be assessed in detail later on.
+
+
+### 3. Target vs cp (chest pain)
+
+Since chest pain is represented on the scale of 0 to 3, it is a discreate variable. So, the best way to represent it is via a bar plot 
+
+```{r echo=TRUE}
+df %>% ggplot(aes(x=cp, fill=factor(target))) +
+  geom_bar(position='dodge') 
+```
+
+Recall that chest pain (cp) was recorded on the scale of 0, 1, 2 and 3, with 0 being no pain and 3 being highest pain. The bar shows shows that even those that reported having no chest pain, had heart disease. This suggests that chest pain is not necessarily a symptom of heart disease. 
+
+### 4. Target vs trestbps (Resting Blood Pressure)
+
+Since tresbps is also a continous variable, it was inspected just like the age variable, with overlaid density plots. Recall that, this variable was log transformed earlier.   
+
+```{r echo=TRUE}
+df %>% ggplot(aes(x=log1_trestbps, fill=factor(target))) +
+  geom_density(alpha=0.5) 
+```
+
+The above density plot revels that, those with heart disease seem to have lower blood pressure (blue curve), whereas those without heart disease seem to have higher blood pressure (red curve). 
+
+### 5. Target vs chol (Cholesterol levels)
+
+Just like tresbps (blood pressure), cholesterol is also a continous variable, and can inspected with overlaid density plots. Recall that this variable was also log transformed.  
+
+```{r echo=TRUE}
+df %>% ggplot(aes(x=log1_chol, fill=factor(target))) +
+  geom_density(alpha=0.5) 
+```
+
+
+Looking at the density plot, we can see that those that have a heart disease have greater density of cholesterol. This is represented by greater density in the blue curve compared to red. So, this could point to the fact that there may be a weak positive correlation between the presence of heart disease and cholesterol.
+
+### Multicollinearity amongst Continuous Variables
+
+Multicollinearity refers to having highly correlated continuous predictor variables. Since there are  three continuous variables (age, blood pressure and cholesterol), multicollinearity will be checked for correlations amongst these.
+
+#### 1. Age vs Blood Pressure
+
+
+```{r echo=TRUE}
+# Correlation Coefficient
+print(cor(df$age, df$log1_trestbps))
+```
+
+
+```{r echo=TRUE}
+# Visualization of the Correlation
+df %>%  ggplot(aes(x=age, y=log1_trestbps)) +
+  ggtitle('Multicollinearity check for Age and Log1_trestbps') +
+  geom_point() +
+  geom_smooth(method='lm')
+```
+
+The correlation coefficient is 0.267 which is considered lower than the threshold value for correlation, 0.8. So, it can be said that no strong pattern observed and therefore multicollinearity is not a problem for age and log1_trestbps. 
+
+#### 2. Age vs Cholesterol 
+
+```{r echo=TRUE}
+# Correlation Coefficient 
+print(cor(df$age, df$log1_chol))
+```
+
+
+```{r echo=TRUE}
+# Visualization of the Correlation
+df %>%  ggplot(aes(x=age, y=log1_chol)) +
+  ggtitle('Multicollinearity check for Age and Log1_chol') +
+  geom_point() +
+  geom_smooth(method='lm')
+```
+
+The correlation coefficient is 0.217 which is also considered lower than the threshold value of is 0.8. So, multicollinearity is not a problem for age and log1_chol as well. 
+
+#### 3. Blood Pressure vs Cholesterol 
+
+
+```{r echo=TRUE}
+# Correlation Coefficient
+print(cor(df$log1_trestbps, df$log1_chol))
+```
+
+
+```{r echo=TRUE}
+# Visualization of the Correlation
+df %>%  ggplot(aes(x=log1_trestbps, y=log1_chol)) +
+  ggtitle('Multicollinearity check for Log1_trestbps and Log1_chol') +
+  geom_point() +
+  geom_smooth(method='lm')
+```
+
+The correlation coefficient between log1_trestbps and log1_chol is 0.132 which signifies a very weak correlation. Hence, multicollinearity is not a problem for log1_trestbps and log1_chol either. 
+
+
+# **Modeling**
+
+Logistic regression will be used to a generate a model that can predict the heart disease in patients. For the sake of this data, logistic regression is the ideal choice for two reasons. Firstly, the target (dependent) variable in the model is binary; secondly, it is a predictive analysis and can be used to explain the relationship between one dependent binary variable with multiple predictors.  
+
+
+Since resting blood pressure and cholesterol were log transformed it may be difficult to interpret it. Hence, additional feature engineering step will be carried out. Standardization of these variables will enable us to interpret the effects in terms of standard deviation.
+
+
+```{r echo=TRUE}
+# Standdarsize log1_trestbps
+df$log1_trestbpsstd <- scale(df$log1_trestbps)
+
+# Standdarsize log1_chol
+df$log1_cholstd <- scale(df$log1_chol)
+```
+
+### Implementation of the logistic model
+
+```{r echo=TRUE}
+lm <- glm(target ~ sex+age+cp+log1_trestbpsstd+log1_cholstd, data = df, family = 'binomial')
+summary(lm)
+```
+
+Since the model incorporated logistic regression, the coefficients above correspond to log odds value. These coefficients directly do not state anything except that there is a positive relationship. The p-value is very small, which indicates that this relationship is statistically significant. Therefore, in order to understand and interpret this relationship more accurately, odds ratio will be computed. 
+
+### Interpreting the Coefficients through Odds Ratio
+
+```{r echo=TRUE}
+lm %>% coefficients %>% exp %>% round(3)
+```
+
+Intercept will be ignored as it does not give any relevant information. However, rest of the coefficients will be interpreted as following:
+
+
+(Intercept)              age              sex log1_trestbpsstd 
+##            0.012            1.060            5.505            1.246 
+##     log1_cholstd 
+##            1.302
+
+
+
+- Age: odds ratio of 1.060 can be interpreted as - increasing age by 1 year is associated with 1.06x increase in odds of getting a heart disease. in other words, aging 1 year is associated with a 6% [100 x (1.060 - 1)] increase in the odds of getting a heart disease.  
+
+- Sex: It is important to note that the odds ratio of 5.505 represents the odds of going to from female to male (since 0 = female and 1 = male). Hence, it is interpreted as, being a male is associated with 5.505x increase in odds of getting a heart disease. 
+
+- Chest Pain: odds ratio of 0.347 can be interpreted as increase in chest pain level by 1 leads to 65.3% [100 x (1 - 0.347)] decrease in heart disease
+
+- Log1_trestbps: the odds of getting a heart disease is 24.6% [100 x (1.246 - 1)] higher is you are 1 standard deviation above log blood pressure. 
+
+- Log1_chol: the odds of getting a heart disease is 30.2% [100 X (1.302 - 1)] higher if you are 1 standard deviation above the average log cholesterol. 
+
+### Evaluting Predictive Performance
+
+In order to evaluate predictive performance, train/test framework will be used. 
+
+
+```{r echo=TRUE}
+# Using original data, divide into train/test data 
+n <- nrow(heartdata)
+train_ind <- sample(seq_len(n), size = floor(0.8 * n))
+```
+
+It is and 80/20 split to the original 'heartdata'. So, 80% training data and 20% test data. 
+
+```{r echo=TRUE}
+# Split train/test sets
+df_train <- heartdata[train_ind, ]
+df_test <- heartdata[-train_ind, ]
+```
+
+
+```{r echo=TRUE}
+# Define function for feature engineering pipeline
+# categorical age
+transformations <- function(df) {
+ df <- df %>% 
+   mutate(
+  AgeCategories = case_when(
+    age < 54 ~ 'Adults',
+    age >= 54 & age < 70 ~ 'Older Adults',
+    age >= 70 ~ 'Elderly'
+  ),
+ 
+  # log and standardize trestbps
+  log1_trestbpsstd = scale(log1p(df$trestbps)),
+  # log and standardize chol
+   log1_cholstd = scale(log1p(df$chol))
+ ) %>%
+  
+   # select only variables to be used
+   select(target, age, sex, cp, log1_trestbpsstd, log1_cholstd)
+   # return the transformed dataframe
+   return(df)
+}
+```
+
+
+```{r echo=TRUE}
+# Feature engineering steps done above is to be applied to both training and test datasets
+df_train <- df_train %>% transformations
+df_test <- df_test %>% transformations
+```
+
+
+```{r echo=TRUE}
+# Check the training dataset
+df_train %>% head(5)
+```
+
+Now the training and test sets are formed. The model will now be trained on the training set and then make predictions on the training and test sets. 
+
+```{r echo=TRUE}
+# Fit model to training data
+lm_train <- glm(target ~ age + log1_trestbpsstd + log1_cholstd, data=df_train, family='binomial')
+```
+
+### Predictions 
+
+```{r echo=TRUE}
+# Predict on training set (within-sample predictions)
+df_train$y_pred_probs <- predict(lm_train, df_train, type="response")
+df_train$y_pred <- ifelse(df_train$y_pred_probs > 0.5, 1, 0)
+
+# Predict on test set (out-of-sample predictions)
+df_test$y_pred_probs <- predict(lm_train, df_test, type="response")
+df_test$y_pred <- ifelse(df_test$y_pred_probs > 0.5, 1, 0)
+```
+
+Now that the predictions are now stored for the train and test data sets, `confusionMatrix` function can be used to generate confusion matrix which will tabulate the correct and incorrect predictions versus the true values. Recall that since logistic regression was used in the model, classification metrics will be used. 
+
+
+
+### Confusion Matrix for Predictions on Training set
+
+```{r echo=TRUE}
+cm_train <- confusionMatrix(as.factor(df_train$y_pred), as.factor(df_train$target), positive='1')
+cm_train$table
+```
+
+```{r echo=TRUE}
+cm_train$overall['Accuracy'] %>% round(2)
+```
+
+```{r echo=TRUE}
+cm_train$byClass['Recall'] %>% round(2)
+```
+
+```{r echo=TRUE}
+cm_train$byClass['Precision'] %>% round(2)
+```
+
+### Confusion matrix for predictions on test set
+
+```{r echo=TRUE}
+# Confusion matrix for predictions on test set
+cm_test <- confusionMatrix(as.factor(df_test$y_pred), as.factor(df_test$target), positive='1')
+cm_test$table
+```
+
+```{r echo=TRUE}
+cm_test$overall['Accuracy'] %>% round(2)
+```
+
+```{r echo=TRUE}
+cm_test$byClass['Recall'] %>% round(2)
+```
+
+```{r echo=TRUE}
+cm_test$byClass['Precision'] %>% round(2)
+```
+
+Results between the training and the test datasets are very similar. 
+
+- Accuracy: is the portion of correct predictions. Accuracy of 0.6% means that, 60% of the heart rate predictions on the test set are correct.
+
+- Recall: Based on the definition of recall which is the proportions of actual true that the model labelled true, it can be said that the model correctly identified 57% of the patients with heart disease 
+
+- Precision: is the proportion of positive predictors that are actually true. So, when the model predicted heart disease, it is true 62% of the time. 
+
+In general, the results between the training and the test sets are very similar, point to the fact that our model is able to predict results on a dataset that it is very new to. In other words, overfitting was not a problem.  
+ 
+
+# Summary 
+
+
+This project aimed at understanding the factors that contribute to heart disease. A model was built to predict whether a patient has heart disease or not using a dataset obtained from Kaggle. This dataset had to be adjusted for the 'target' variable as the values were found to be have switched. Below is a quick summary of the entire project by each variable: 
+
+### Age
+
+* This variable was recorded in years and displayed bimodal distribution. 
+* Density plot revealed that there are 3 groups. Less than 54 years (labelled as 'adults'), greater than or equal to 54 and less than 70 years (labeled as 'older adults') and greater than or equal to 70 years (labelled as 'elderly')
+* Older population in the dataset seem to have higher number of heart diseases than younger.
+* Aging 1 year is associated with a 6% increase in the odds of getting a heart disease.  
+
+### Sex
+
+* Sex is related to heart disease, in that males have more heart disease. 
+* Being a male is associated with 5.5 increase in odds of getting a heart disease. 
+
+### Chest Pain
+
+* Side by side bar plots revealed even those that reported 0 chest pain had heart disease. This means that the level of chest pain experienced by the patient is not necessarily a result of heart disease.
+* Odds ratio revealed that increase in chest pain level by 1 leads to 65.3% [100 x (1 - 0.347)] decrease in heart disease. 
+
+### Blood Pressure 
+
+* The distribution of this variable was right skewed, so it was log transformed to make it normally distributed.  
+* Although those with heart disease seem to have lower blood pressure compared to those that do not, the odds of getting a heart disease is 24.6% higher is you are 1 standard deviation above log blood pressure. 
+
+### Cholesterol
+
+* This variable was right skewed, so it was log transformed to make it normally distributed. 
+* The odds of getting a heart disease is 30.2% [100 X (1.302 - 1)] higher if you are 1 standard deviation above the average log cholesterol. 
+
+Putting it all together, this project was aimed at helping you understand your risk for heart disease. Using logistic regression, a model was built that could determine whether a patient has heart disease or not. Based on analysis done on the data from Kaggle it was found that you are at higher risk of developing a heart disease if you are male, as you get older and if you have high blood pressure and blood cholesterol levels. Overfitting was not a problem with the model that was generated and so this model can confidently be used to predict whether a patient has heart disease or not.
+
+# References
+
+
+Heart Disease. (2019). Retrieved on December 13, 2019, from, https://s3.amazonaws.com/assets.inarkansas.com/70160/faces-of-heart-disease-723.png
+
+
+Heart Disease Dataset. Retrieved on November 1, 2019, from https://www.kaggle.com/johnsmith88/heart-disease-dataset/kernels
+
+
+Target Variable is Swapped! Retrieved on December 13, 2019, from https://www.kaggle.com/ronitf/heart-disease-uci/discussion/101018
